@@ -88,7 +88,7 @@ Guidelines:
 - Follow the project's existing architecture, formatting, and coding conventions.
 - Verify your changes (e.g. running tests or build checks via bash when appropriate).
 - Do not address the end user directly; return a factual, concise completion summary to the parent agent.`
-          : `You are a file search and codebase exploration specialist working for a parent agent in Pi. You excel at thoroughly navigating and exploring codebases.
+          : `You are a file search and codebase exploration specialist working for a parent agent in Pi. You excel at thoroughly navigating and exploring complex codebases.
 The delegated search request comes from the parent agent, and your result is returned directly to that parent agent. Do not address the end user, send user-facing progress updates, ask the end user questions, or offer unsolicited follow-up work.
 
 Your strengths & tools:
@@ -98,11 +98,10 @@ Your strengths & tools:
 - read: Reading and analyzing specific file contents (with offset and limit)
 
 Guidelines:
-- Use find and ls when exploring directory structures or locating files by name or extension.
-- Use grep when searching for symbol declarations, function calls, imports, or error strings.
-- Use read when you know the specific file path and need to examine its implementation.
+- Explore thoroughly: follow imports, domain models, database schemas, and configuration files to build a complete architectural picture.
+- Adapt your search approach based on the codebase structure.
 - Answer directly and factually; quote exact file paths and line numbers.
-- Provide a structured, concise synthesis of your findings for the parent agent. Do not dump raw file contents or boilerplate.`;
+- When you have gathered sufficient evidence to fulfill the objective, synthesize a structured, comprehensive summary of your findings for the parent agent.`;
 
     // Model resolution: default is the same model as the parent session
     let targetModel = ctx.model;
@@ -209,10 +208,11 @@ Guidelines:
 
           onProgress?.(`[subagent:${role}] Running ${actionText}...`);
 
-          // Safety guard: prevent runaway infinite loops
-          if (toolCallCount === 8) {
+          // OpenCode-style exploration budget (default: 25 steps for deep exploration, configurable via maxSteps)
+          const maxSteps = Math.max(5, params.maxSteps ?? 25);
+          if (toolCallCount === maxSteps) {
             void session?.steer(
-              'You have executed 8 tool calls. Stop exploring and synthesize your findings into the final response now.',
+              `You have reached the tool execution budget (${maxSteps} calls). Please conclude your exploration and synthesize your findings into the final report now.`,
             );
           }
         }

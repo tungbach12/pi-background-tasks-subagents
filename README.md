@@ -54,7 +54,7 @@ Complex multi-agent frameworks often introduce unnecessary overhead:
 | **Token Consumption** | Thousands of tokens burned on preamble and meta-prompts | **Minimal tokens**: Strictly bounded 4-layer context envelope |
 | **Agent Paradigm** | Forces multi-agent delegation on every trivial task | **Fast native Bash** by default; subagents called *only when needed* |
 | **Context Protection** | Massive outputs blow up your context window | **12k runway truncation** + full output retained in TUI dock |
-| **Loop Runaway Guard** | Agents can wander indefinitely | **Auto-steers to synthesis** after 8 exploration tool calls |
+| **Loop Runaway Guard** | Agents can wander indefinitely | **Autonomous deep exploration** (default: 25 steps, configurable via `maxSteps`) |
 
 ---
 
@@ -104,7 +104,7 @@ Complex multi-agent frameworks often introduce unnecessary overhead:
 
 | Tool | Parameters | Description |
 |---|---|---|
-| `subagent` | `description`, `prompt`, `background?`, `role?`, `model?`, `context?` | Autonomous subagent delegation with isolated context and loop runaway cap. |
+| `subagent` | `description`, `prompt`, `background?`, `role?`, `maxSteps?`, `model?`, `context?` | Autonomous subagent delegation with deep codebase exploration (default: 25 steps). |
 | `bg_run` | `command`, `name?`, `timeoutSeconds?` | Runs shell command in the background with auto turn wake-up upon completion. |
 | `bg_status` | `taskId?` | Point-in-time status of all tasks and subagents. |
 | `bg_logs` | `taskId`, `maxBytes?`, `tail?` | Reads bounded log output from disk or subagent history. |

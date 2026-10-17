@@ -93,6 +93,12 @@ export const SubagentParams = Type.Object({
         'Optional model override (e.g. "provider/modelId"). Defaults to the current session model.',
     }),
   ),
+  maxSteps: Type.Optional(
+    Type.Number({
+      description:
+        'Maximum tool calls allowed before concluding exploration (default: 25 for deep exploration). Set higher (e.g. 35-40) for exhaustive multi-repo research.',
+    }),
+  ),
 });
 
 export const BgStatusParams = Type.Object({
