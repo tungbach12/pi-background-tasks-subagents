@@ -36,25 +36,25 @@ Press **`Shift+Down`** anywhere to open the Dock, then press **`Enter`** on any 
 
 ---
 
-## ⚡ The Anti-Bloat Manifesto: Why This Package?
+## ⚡ Design Philosophy: Lean, Focused & Zero-Disk
 
-Many modern AI agent harnesses (such as OMP / `oh-my-opencode`) have become massive bloatware:
-- ❌ **50,000+ token preambles** and 1,400+ lines of system prompt per request.
-- ❌ **"Council of 7 divine agents"** debating each other and burning through your API limits just to fix a single line of code.
-- ❌ **Dozens of intrusive hooks** modifying your turns, causing latency and unpredictable behavior.
-- ❌ **Hundreds of megabytes of `.jsonl` session clutter** polluting your disk.
+Complex multi-agent frameworks often introduce unnecessary overhead:
+- **Excessive prompt preambles** that consume tens of thousands of tokens before your task even begins.
+- **Over-engineered agent committees** that debate minor code edits, adding latency and burning rate limits.
+- **Persistent disk clutter** storing hundreds of megabytes of temporary `.jsonl` session files across runs.
+- **Runaway exploration loops** where subagents wander without bounded stopping criteria.
 
-**`pi-background-tasks-subagents` is built with a strictly opposite philosophy:**
+**`pi-background-tasks-subagents` adheres strictly to Pi's minimalist, high-performance philosophy:**
 
-| Feature | Bloated Harnesses (OMP / Heavy Plugins) | `pi-background-tasks-subagents` |
+| Architectural Aspect | Conventional Agent Plugins | `pi-background-tasks-subagents` |
 |---|---|---|
 | **Package Size** | Heavy multi-megabyte dependencies (1,000+ files) | **~20 KB** (clean TypeScript, boots in <5ms) |
-| **System Prompt** | 1,400+ lines injected into every turn | **Zero prompt bloat** on the main session |
-| **Disk Footprint** | Heavy persistent `.jsonl` sessions for every run | **Zero disk footprint**: 100% in-memory via `SessionManager.inMemory()` |
-| **Token Consumption** | 30k – 50k tokens burned before inspecting code | **Minimal tokens**: Strictly bounded 4-layer context envelope |
-| **Agent Paradigm** | Forces multi-agent debate on every trivial task | **Fast native Bash** by default; subagents called *only when needed* |
+| **System Prompt** | Hundreds of lines injected into every turn | **Zero prompt overhead** on the primary session |
+| **Disk Footprint** | Persistent session logs created for every task | **Zero disk footprint**: 100% in-memory via `SessionManager.inMemory()` |
+| **Token Consumption** | Thousands of tokens burned on preamble and meta-prompts | **Minimal tokens**: Strictly bounded 4-layer context envelope |
+| **Agent Paradigm** | Forces multi-agent delegation on every trivial task | **Fast native Bash** by default; subagents called *only when needed* |
 | **Context Protection** | Massive outputs blow up your context window | **12k runway truncation** + full output retained in TUI dock |
-| **Loop Runaway Guard** | Agents can wander infinitely | **Auto-steers to synthesis** after 8 exploration tool calls |
+| **Loop Runaway Guard** | Agents can wander indefinitely | **Auto-steers to synthesis** after 8 exploration tool calls |
 
 ---
 
