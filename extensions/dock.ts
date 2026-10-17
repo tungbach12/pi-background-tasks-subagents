@@ -116,7 +116,7 @@ export class DockManager {
       const unseenFinished = all.filter((t) => t.status !== 'running' && !this.seenIds.has(t.id));
 
       if (runningProcs.length === 0 && runningSubs.length === 0 && unseenFinished.length === 0) {
-        ctx.ui.setStatus('orchestrator', undefined);
+        ctx.ui.setStatus('background-tasks-subagents', undefined);
         return;
       }
 
@@ -126,7 +126,7 @@ export class DockManager {
       if (unseenFinished.length > 0) parts.push(`${unseenFinished.length} done`);
 
       const label = `\x1b[48;2;30;41;59m\x1b[38;2;56;189;248m ↓ Tasks: ${parts.join(' · ')} [Shift+↓] \x1b[0m`;
-      ctx.ui.setStatus('orchestrator', label);
+      ctx.ui.setStatus('background-tasks-subagents', label);
     } catch {
       this.activeCtx = undefined;
     }

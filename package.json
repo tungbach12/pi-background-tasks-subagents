@@ -1,24 +1,27 @@
 {
-  "name": "@tungbach12/pi-orchestrator",
+  "name": "pi-background-tasks-subagents",
   "version": "1.0.0",
-  "description": "Unified background shell execution, autonomous in-memory subagents, and OpenCode-style directional TUI dock for Pi",
+  "description": "Unified background shell tasks, autonomous in-memory subagents, and OpenCode-style directional TUI dock for Pi",
   "author": "tungbach12",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tungbach12/pi-orchestrator.git"
+    "url": "git+https://github.com/tungbach12/pi-background-tasks-subagents.git"
   },
   "bugs": {
-    "url": "https://github.com/tungbach12/pi-orchestrator/issues"
+    "url": "https://github.com/tungbach12/pi-background-tasks-subagents/issues"
   },
-  "homepage": "https://github.com/tungbach12/pi-orchestrator#readme",
+  "homepage": "https://github.com/tungbach12/pi-background-tasks-subagents#readme",
   "type": "module",
   "keywords": [
     "pi-package",
     "pi-extension",
-    "orchestrator",
+    "background-tasks",
     "subagents",
-    "background-tasks"
+    "subagent",
+    "orchestrator",
+    "tui",
+    "opencode"
   ],
   "pi": {
     "extensions": [

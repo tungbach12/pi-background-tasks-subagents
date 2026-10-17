@@ -1,4 +1,4 @@
-# pi-orchestrator
+# pi-background-tasks-subagents
 
 Unified background shell execution (`bg_run`), autonomous in-memory subagents (`subagent`), and an OpenCode-style directional TUI dock for [Pi](https://github.com/earendil-works/pi).
 
@@ -44,14 +44,14 @@ Unified background shell execution (`bg_run`), autonomous in-memory subagents (`
 
 ## Installation
 
-### Via Git (Recommended)
+### Via NPM (Recommended)
 ```bash
-pi install git:github.com/tungbach12/pi-orchestrator
+pi install npm:pi-background-tasks-subagents
 ```
 
-### Via NPM
+### Via Git
 ```bash
-pi install npm:@tungbach12/pi-orchestrator
+pi install git:github.com/tungbach12/pi-background-tasks-subagents
 ```
 
 ### Local Development
@@ -59,7 +59,7 @@ Clone or link in your `~/.pi/agent/settings.json`:
 ```json
 {
   "packages": [
-    "../packages/pi-orchestrator"
+    "../packages/pi-background-tasks-subagents"
   ]
 }
 ```
