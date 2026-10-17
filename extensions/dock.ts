@@ -11,8 +11,8 @@ import { formatDuration, readLogTailLines } from './process.js';
 import type { OrchestratorTask } from './types.js';
 
 // OpenCode-exact color palette
-const DARK_BG = '\x1b[48;2;20;20;22m'; // Solid opaque dark slate background (hides content behind)
-const PEACH_BG = '\x1b[48;2;254;180;120m\x1b[38;2;15;15;18m\x1b[1m'; // Solid peach highlight with black text
+const DARK_BG = '\x1b[48;2;20;20;22m'; // Solid opaque dark slate background
+const PEACH_BG = '\x1b[48;2;254;180;120m\x1b[38;2;15;15;18m\x1b[1m'; // Solid peach highlight
 const BOLD_WHITE = '\x1b[1m\x1b[38;2;250;250;250m';
 const DIM_GRAY = '\x1b[38;2;120;120;130m';
 const MUTED_TEXT = '\x1b[38;2;200;200;210m';
@@ -150,7 +150,7 @@ export class DockManager {
             anchor: 'bottom-center',
             width: '100%',
             minWidth: 60,
-            maxHeight: '100%', // Allows fullscreen expansion on Enter!
+            maxHeight: '100%',
             margin: { bottom: 0, left: 0, right: 0 },
           },
         },
@@ -173,6 +173,12 @@ export class TaskDockComponent implements Component, Focusable {
   private _focused = true;
   private refreshTimer?: NodeJS.Timeout;
 
+  // Detail mode toggle states
+  private showThinking = false;
+  private showTools = false;
+  private thoughtLineY = -1;
+  private exploredLineY = -1;
+
   constructor(
     private readonly tui: TUI,
     private readonly theme: Theme,
@@ -186,9 +192,10 @@ export class TaskDockComponent implements Component, Focusable {
       this.activeTab = 'shell';
     }
 
+    // Refresh every 200ms to smoothly stream live subagent execution in detail view
     this.refreshTimer = setInterval(() => {
       this.tui.requestRender();
-    }, 500);
+    }, 200);
   }
 
   get focused(): boolean {
@@ -217,8 +224,91 @@ export class TaskDockComponent implements Component, Focusable {
     return forTab;
   }
 
+  handleMouse(event: any): any {
+    if (this.mode === 'fullscreen') {
+      // Mouse Wheel Scrolling
+      if (event.type === 'wheel') {
+        const delta = event.wheelDelta ?? (event.button === 'none' ? 0 : 1);
+        if (delta > 0) {
+          this.detailScroll += 3;
+        } else if (delta < 0) {
+          this.detailScroll = Math.max(0, this.detailScroll - 3);
+        }
+        this.tui.requestRender();
+        return { handled: true, render: true };
+      }
+
+      // Mouse Click
+      if (event.type === 'click' || (event.type === 'press' && event.button === 'left')) {
+        const y = event.y;
+        // Click Header: Back
+        if (y === 0 && event.x <= 18) {
+          this.mode = 'list';
+          this.tui.requestRender();
+          return { handled: true, render: true };
+        }
+        // Click Thought line: Toggle Thinking
+        if (this.thoughtLineY !== -1 && y === this.thoughtLineY) {
+          this.showThinking = !this.showThinking;
+          this.tui.requestRender();
+          return { handled: true, render: true };
+        }
+        // Click Explored tools line: Toggle Tool calls
+        if (this.exploredLineY !== -1 && y === this.exploredLineY) {
+          this.showTools = !this.showTools;
+          this.tui.requestRender();
+          return { handled: true, render: true };
+        }
+      }
+    }
+    return undefined;
+  }
+
   handleInput(data: string): void {
     this.actionNotice = undefined;
+
+    // Handle raw SGR mouse escape sequences (supports mouse wheel & clicks in any terminal)
+    if (data.startsWith('\x1b[<')) {
+      const match = data.match(/^\x1b\[<(\d+);(\d+);(\d+)([mM])/);
+      if (match) {
+        const button = parseInt(match[1]!, 10);
+        const y = parseInt(match[3]!, 10) - 1;
+        const isPress = match[4] === 'M';
+
+        if (this.mode === 'fullscreen') {
+          // Wheel Up (button 64)
+          if (button === 64) {
+            this.detailScroll = Math.max(0, this.detailScroll - 3);
+            this.tui.requestRender();
+            return;
+          }
+          // Wheel Down (button 65)
+          if (button === 65) {
+            this.detailScroll += 3;
+            this.tui.requestRender();
+            return;
+          }
+          // Left Click (button 0)
+          if (button === 0 && isPress) {
+            if (y === 0) {
+              this.mode = 'list';
+              this.tui.requestRender();
+              return;
+            }
+            if (this.thoughtLineY !== -1 && (y === this.thoughtLineY || y === this.thoughtLineY - 1)) {
+              this.showThinking = !this.showThinking;
+              this.tui.requestRender();
+              return;
+            }
+            if (this.exploredLineY !== -1 && (y === this.exploredLineY || y === this.exploredLineY - 1)) {
+              this.showTools = !this.showTools;
+              this.tui.requestRender();
+              return;
+            }
+          }
+        }
+      }
+    }
 
     if (this.mode === 'list') {
       const items = this.currentTabTasks();
@@ -232,7 +322,7 @@ export class TaskDockComponent implements Component, Focusable {
         return;
       }
 
-      // Up arrow -> Move selection up, OR if at row 0 (top of dock), EXIT back to main chat!
+      // Up arrow -> Move selection up, OR if at row 0, exit back to main chat!
       if (matchesKey(data, 'up') || data === 'k') {
         if (this.selectedIndex === 0 || items.length === 0) {
           this.invalidate();
@@ -244,7 +334,7 @@ export class TaskDockComponent implements Component, Focusable {
         return;
       }
 
-      // Left / Right arrow or Tab -> Switch between Subagents and Shell tabs (tabs ←/→)
+      // Left / Right arrow or Tab -> Switch between Subagents and Shell tabs
       if (matchesKey(data, 'left') || matchesKey(data, 'right') || matchesKey(data, 'tab') || data === 'h' || data === 'l') {
         this.activeTab = this.activeTab === 'subagents' ? 'shell' : 'subagents';
         this.selectedIndex = 0;
@@ -259,6 +349,8 @@ export class TaskDockComponent implements Component, Focusable {
           this.mode = 'fullscreen';
           this.detailTaskId = selected.id;
           this.detailScroll = 0;
+          this.showThinking = false;
+          this.showTools = false;
           this.dock.markSeen(selected.id);
           this.tui.requestRender();
         }
@@ -292,9 +384,23 @@ export class TaskDockComponent implements Component, Focusable {
       }
     } else {
       // In Fullscreen Detail Mode:
-      // Left arrow, Backspace, or Escape -> Step LEFT back to List View!
+      // Left arrow, Backspace, or Escape -> Step back to List View!
       if (matchesKey(data, 'left') || matchesKey(data, 'escape') || matchesKey(data, 'backspace') || data === 'h') {
         this.mode = 'list';
+        this.tui.requestRender();
+        return;
+      }
+
+      // 't' -> Toggle Thinking block
+      if (data === 't' || data === 'T') {
+        this.showThinking = !this.showThinking;
+        this.tui.requestRender();
+        return;
+      }
+
+      // 'e' or 'o' -> Toggle Explored Tools block
+      if (data === 'e' || data === 'E' || data === 'o' || data === 'O') {
+        this.showTools = !this.showTools;
         this.tui.requestRender();
         return;
       }
@@ -357,6 +463,8 @@ export class TaskDockComponent implements Component, Focusable {
 
   render(width: number): string[] {
     const lines: string[] = [];
+    this.thoughtLineY = -1;
+    this.exploredLineY = -1;
 
     if (this.mode === 'list') {
       const items = this.currentTabTasks();
@@ -383,11 +491,9 @@ export class TaskDockComponent implements Component, Focusable {
         visibleItems.forEach((task, idx) => {
           const isSelected = idx === this.selectedIndex;
 
-          // OpenCode row title format
           const prefix = task.role ? `${task.role.charAt(0).toUpperCase() + task.role.slice(1)}: ` : '';
           const label = `${prefix}${task.name}`;
 
-          // Status label on right
           let statusText = 'Running';
           if (task.status === 'completed') statusText = 'Done';
           else if (task.status === 'failed') statusText = 'Failed';
@@ -396,7 +502,6 @@ export class TaskDockComponent implements Component, Focusable {
           lines.push(renderRowLine(label, statusText, isSelected, width));
         });
 
-        // Fill empty row spaces if needed
         for (let r = visibleItems.length; r < Math.min(2, maxRows); r++) {
           lines.push(opaqueLine('', width));
         }
@@ -410,8 +515,7 @@ export class TaskDockComponent implements Component, Focusable {
         lines.push(opaqueLine(`  ${RED_TEXT}${this.actionNotice}${RESET}`, width));
       }
 
-      // Bottom Bar matching OpenCode screenshot:
-      // interrupt ctrl+d  show inactive ctrl+a  tabs ←/→
+      // Bottom Bar
       const bInterrupt = `${BOLD_WHITE}interrupt${RESET} ${DIM_GRAY}ctrl+d${RESET}`;
       const bShowInactive = `${BOLD_WHITE}show inactive${RESET} ${DIM_GRAY}ctrl+a${RESET}`;
       const bTabs = `${BOLD_WHITE}tabs${RESET} ${DIM_GRAY}←/→${RESET}`;
@@ -421,12 +525,13 @@ export class TaskDockComponent implements Component, Focusable {
       // Fullscreen View Mode (OpenCode exact transcript layout)
       const task = this.detailTaskId ? this.dock.get(this.detailTaskId) : undefined;
       const termHeight = Math.max(16, (process.stdout.rows || 24));
+      const isRunning = task?.status === 'running';
 
-      // Top fixed header
+      // Top fixed header: ← Back (esc/←)   <Task Name>                 Running/Done
       const backText = `${BOLD_WHITE}← Back (esc/←)${RESET}`;
       const titleText = `${DIM_GRAY}${task?.name ?? 'Task'}${RESET}`;
-      const statusText = task?.status === 'running'
-        ? `${GREEN_TEXT}Running${RESET}`
+      const statusText = isRunning
+        ? `${GREEN_TEXT}● Running${RESET}`
         : task?.status === 'completed'
           ? `${DIM_GRAY}Done${RESET}`
           : `${RED_TEXT}Failed${RESET}`;
@@ -438,45 +543,66 @@ export class TaskDockComponent implements Component, Focusable {
 
       // Assemble content lines for the body
       const content: string[] = [];
+      let thoughtContentIdx = -1;
+      let exploredContentIdx = -1;
 
       if (!task) {
         content.push(`  ${RED_TEXT}Task not found.${RESET}`);
       } else if (task.kind === 'subagent') {
-        // 1. The Prompt Block with Purple Left Bar (OpenCode style)
+        // 1. The Prompt Block with Purple Left Bar
         const promptLines = task.commandOrPrompt.split('\n');
         for (const pl of promptLines) {
           content.push(`  ${PURPLE_BAR}${MUTED_TEXT}${pl}${RESET}`);
         }
         content.push('');
 
-        // 2. Thought duration line
-        const thoughtMs = task.thoughtDurationMs ?? 270;
-        const thoughtLabel = thoughtMs < 1000 ? `${thoughtMs}ms` : `${(thoughtMs / 1000).toFixed(1)}s`;
-        content.push(`  ${THOUGHT_YELLOW}+ Thought · ${thoughtLabel}${RESET}`);
+        // 2. Thought duration line (Click or press 't' to toggle)
+        thoughtContentIdx = content.length;
+        const elapsed = isRunning ? Date.now() - task.startTime : (task.thoughtDurationMs ?? 270);
+        const thoughtLabel = elapsed < 1000 ? `${elapsed}ms` : `${(elapsed / 1000).toFixed(1)}s`;
+        const thoughtSymbol = isRunning ? '●' : (this.showThinking ? '-' : '+');
+        content.push(`  ${THOUGHT_YELLOW}${thoughtSymbol} Thought · ${thoughtLabel}${RESET}`);
+
+        if (this.showThinking) {
+          content.push(`    ${DIM_GRAY}Formulating execution strategy & bounded research scope (${thoughtLabel})${RESET}`);
+          if (task.liveAction && isRunning) {
+            content.push(`    ${DIM_GRAY}Active planning: evaluating next tool step...${RESET}`);
+          }
+        }
         content.push('');
 
-        // 3. Explored summary line
-        const exploredText = task.summaryActionText ?? `→ Explored: ${task.readsCount} reads, ${task.searchesCount} searches`;
-        content.push(`  ${EXPLORED_GRAY}${exploredText}${RESET}`);
+        // 3. Explored summary line (Click or press 'e' to toggle tool history)
+        exploredContentIdx = content.length;
+        const exploredPrefix = isRunning ? '→' : (this.showTools ? '▼' : '→');
+        let exploredText = '';
+        if (isRunning) {
+          exploredText = `Exploring: ${task.readsCount} reads, ${task.searchesCount} searches`;
+        } else {
+          exploredText = task.summaryActionText ?? `Explored: ${task.readsCount} reads, ${task.searchesCount} searches`;
+        }
+        content.push(`  ${EXPLORED_GRAY}${exploredPrefix} ${exploredText}${RESET}`);
+
+        // If showTools is toggled ON, display tool history under Explored line
+        if (this.showTools) {
+          if (task.history.length > 0) {
+            content.push(`    ${BOLD_WHITE}Tool History (${task.history.length}):${RESET}`);
+            task.history.forEach((h, idx) => {
+              const argPreview = h.args && typeof h.args === 'object' ? JSON.stringify(h.args).slice(0, 60) : '';
+              content.push(`      ${DIM_GRAY}${idx + 1}. ${h.tool}(${argPreview})${RESET}`);
+            });
+          } else {
+            content.push(`    ${DIM_GRAY}No tool executions yet.${RESET}`);
+          }
+        }
         content.push('');
 
-        // 4. Active action if running
-        if (task.liveAction && task.status === 'running') {
+        // 4. Active action if running (live streaming)
+        if (task.liveAction && isRunning) {
           content.push(`  ${GREEN_TEXT}● Active: ${task.liveAction}${RESET}`);
           content.push('');
         }
 
-        // 5. Tool execution history
-        if (task.history.length > 0) {
-          content.push(`  ${BOLD_WHITE}Tool History (${task.history.length}):${RESET}`);
-          task.history.forEach((h, idx) => {
-            const argPreview = h.args && typeof h.args === 'object' ? JSON.stringify(h.args).slice(0, 55) : '';
-            content.push(`    ${DIM_GRAY}${idx + 1}. ${h.tool}(${argPreview})${RESET}`);
-          });
-          content.push('');
-        }
-
-        // 6. Synthesis result
+        // 5. Synthesis result
         if (task.resultText) {
           content.push(`  ${BOLD_WHITE}Synthesis Findings:${RESET}`);
           const resLines = task.resultText.split('\n');
@@ -501,22 +627,29 @@ export class TaskDockComponent implements Component, Focusable {
       }
 
       // Scrollable viewport calculation
-      const bodyHeight = Math.max(10, termHeight - 3); // space for header, spacer, and footer
+      const bodyHeight = Math.max(10, termHeight - 3);
       const maxScroll = Math.max(0, content.length - bodyHeight);
       this.detailScroll = Math.min(this.detailScroll, maxScroll);
 
       const visibleBody = content.slice(this.detailScroll, this.detailScroll + bodyHeight);
-      for (const line of visibleBody) {
+      visibleBody.forEach((line, idx) => {
+        const contentIdx = this.detailScroll + idx;
+        const currentY = lines.length;
+        if (contentIdx === thoughtContentIdx) {
+          this.thoughtLineY = currentY;
+        } else if (contentIdx === exploredContentIdx) {
+          this.exploredLineY = currentY;
+        }
         lines.push(opaqueLine(line, width));
-      }
+      });
 
       // Pad empty lines if content is shorter than viewport
       while (lines.length < termHeight - 1) {
         lines.push(opaqueLine('', width));
       }
 
-      // Fixed bottom hints line
-      const detailFooter = `  ${BOLD_WHITE}back${RESET} ${DIM_GRAY}esc/←${RESET}  ${BOLD_WHITE}scroll${RESET} ${DIM_GRAY}↑/↓${RESET}  ${BOLD_WHITE}interrupt${RESET} ${DIM_GRAY}ctrl+d${RESET}  ${BOLD_WHITE}copy${RESET} ${DIM_GRAY}c${RESET}`;
+      // Fixed bottom hints line with toggle hints
+      const detailFooter = `  ${BOLD_WHITE}back${RESET} ${DIM_GRAY}esc/←${RESET}  ${BOLD_WHITE}scroll${RESET} ${DIM_GRAY}wheel/↑/↓${RESET}  ${BOLD_WHITE}thinking${RESET} ${DIM_GRAY}t/click${RESET}  ${BOLD_WHITE}tools${RESET} ${DIM_GRAY}e/click${RESET}  ${BOLD_WHITE}interrupt${RESET} ${DIM_GRAY}ctrl+d${RESET}`;
       lines.push(opaqueLine(detailFooter, width));
     }
 

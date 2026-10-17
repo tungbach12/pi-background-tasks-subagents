@@ -246,74 +246,33 @@ export default function orchestratorExtension(pi: ExtensionAPI): void {
         };
       },
       renderCall(args, theme) {
-        const THOUGHT_YELLOW = '\x1b[38;2;234;179;8m';
-        const EXPLORED_GRAY = '\x1b[38;2;160;160;170m';
-        const RESET = '\x1b[0m';
-
-        const desc = args.description ? ` · ${args.description}` : '';
-        const thoughtLine = `${THOUGHT_YELLOW}● Thought · running...${RESET}`;
-        const actionLine = `${EXPLORED_GRAY}→ Starting subagent [${args.role ?? 'explore'}]${desc}${RESET}`;
-
-        return new Text(`${thoughtLine}\n\n${actionLine}`, 0, 0);
+        const title = theme.fg('toolTitle', theme.bold('subagent '));
+        const roleBadge = theme.fg('dim', `[${args.role ?? 'explore'}] `);
+        const desc = theme.fg('muted', args.description || args.prompt.slice(0, 50));
+        return new Text(`${title}${roleBadge}${desc}`, 0, 0);
       },
-      renderResult(result, options, theme) {
-        const { expanded, isPartial } = (options ?? {}) as { expanded?: boolean; isPartial?: boolean };
+      renderResult(result, { expanded }, theme) {
         const task = (result.details as any)?.task as OrchestratorTask | undefined;
+        const dur = task?.endTime && task?.startTime ? `${Math.round((task.endTime - task.startTime) / 1000)}s` : '';
+        const role = (result.details as any)?.role ?? 'explore';
+        const badge = task?.error
+          ? theme.fg('error', `✗ subagent [${role}]`)
+          : task?.status === 'cancelled'
+            ? theme.fg('warning', `⊘ subagent [${role}]`)
+            : theme.fg('success', `✓ subagent [${role}]`);
 
-        const THOUGHT_YELLOW = '\x1b[38;2;234;179;8m';
-        const EXPLORED_GRAY = '\x1b[38;2;160;160;170m';
-        const PURPLE_BAR = '\x1b[38;2;168;85;247m│\x1b[0m ';
-        const DIM_GRAY = '\x1b[38;2;120;120;130m';
-        const RESET = '\x1b[0m';
+        const name = task?.name ? theme.fg('accent', task.name) : 'subagent';
+        const count = task?.toolCallCount ?? 0;
+        const meta = theme.fg('dim', `(${count} tools · ${dur || '0s'})`);
+        let text = `${badge} ${name} ${meta}`;
 
-        const durationMs = task
-          ? (task.endTime ? task.endTime - task.startTime : Date.now() - task.startTime)
-          : 0;
-        const thoughtMs = task?.thoughtDurationMs ?? durationMs;
-        const durStr = thoughtMs < 1000 ? `${thoughtMs}ms` : `${(thoughtMs / 1000).toFixed(1)}s`;
-
-        const thoughtSymbol = isPartial ? '●' : (expanded ? '-' : '+');
-        const thoughtLine = `${THOUGHT_YELLOW}${thoughtSymbol} Thought · ${durStr}${RESET}`;
-
-        let actionLine = '';
-        if (isPartial) {
-          if (task?.liveAction) {
-            actionLine = `${EXPLORED_GRAY}→ Exploring: ${task.readsCount} reads, ${task.searchesCount} searches (${task.liveAction})${RESET}`;
-          } else {
-            actionLine = `${EXPLORED_GRAY}→ Exploring...${RESET}`;
-          }
-        } else {
-          const summary = task?.summaryActionText ?? `→ Explored: ${task?.readsCount ?? 0} reads, ${task?.searchesCount ?? 0} searches`;
-          actionLine = `${EXPLORED_GRAY}${summary}${RESET}`;
-        }
-
-        let contentText = `${thoughtLine}\n\n${actionLine}`;
-
-        if (expanded && task) {
-          contentText += '\n';
-
-          const promptLines = (task.commandOrPrompt || '').split('\n').slice(0, 8);
-          for (const pl of promptLines) {
-            contentText += `\n  ${PURPLE_BAR}${theme.fg('muted', pl)}`;
-          }
-
-          if (task.history && task.history.length > 0) {
-            contentText += `\n\n  ${theme.bold('Tool History:')}`;
-            task.history.forEach((h, idx) => {
-              const argPreview = h.args && typeof h.args === 'object' ? JSON.stringify(h.args).slice(0, 60) : '';
-              contentText += `\n    ${DIM_GRAY}${idx + 1}. ${h.tool}(${argPreview})${RESET}`;
-            });
-          }
-
+        if (expanded) {
           const output = result.content
             .map((c) => (c.type === 'text' ? c.text : ''))
             .join('\n');
-          if (output) {
-            contentText += `\n\n  ${theme.bold('Findings:')}\n${theme.fg('toolOutput', output.slice(0, 3000))}`;
-          }
+          text += `\n${theme.fg('toolOutput', output.slice(0, 1500))}`;
         }
-
-        return new Text(contentText, 0, 0);
+        return new Text(text, 0, 0);
       },
     },
   );
