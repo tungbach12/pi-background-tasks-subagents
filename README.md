@@ -51,7 +51,7 @@ pi install git:github.com/tungbach12/pi-orchestrator
 
 ### Via NPM
 ```bash
-pi install npm:pi-orchestrator
+pi install npm:@tungbach12/pi-orchestrator
 ```
 
 ### Local Development

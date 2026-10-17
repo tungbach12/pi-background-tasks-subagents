@@ -1,5 +1,5 @@
 {
-  "name": "pi-orchestrator",
+  "name": "@tungbach12/pi-orchestrator",
   "version": "1.0.0",
   "description": "Unified background shell execution, autonomous in-memory subagents, and OpenCode-style directional TUI dock for Pi",
   "author": "tungbach12",
