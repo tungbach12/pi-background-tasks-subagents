@@ -250,8 +250,18 @@ Guidelines:
       await session!.prompt(promptSections.join('\n'));
 
       // Layer 4: Distillation boundary & output bounding
-      const rawText =
-        session!.getLastAssistantText() || '[Subagent completed without producing text output]';
+      let rawText = '';
+      const lastAssistant = [...session!.messages].reverse().find((m) => m.role === 'assistant');
+      if (lastAssistant && Array.isArray(lastAssistant.content)) {
+        for (const c of lastAssistant.content) {
+          if (c.type === 'text' && c.text) {
+            rawText += c.text;
+          }
+        }
+      }
+      if (!rawText.trim()) {
+        rawText = session!.getLastAssistantText() || '[Subagent completed without producing text output]';
+      }
 
       task.status = task.status === 'cancelled' ? 'cancelled' : 'completed';
       task.endTime = Date.now();

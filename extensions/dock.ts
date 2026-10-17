@@ -178,6 +178,23 @@ export class TaskDockComponent implements Component, Focusable {
   private showTools = false;
   private thoughtLineY = -1;
   private exploredLineY = -1;
+  private lastToggleTime = 0;
+
+  private toggleThinking(): void {
+    const now = Date.now();
+    if (now - this.lastToggleTime < 350) return;
+    this.lastToggleTime = now;
+    this.showThinking = !this.showThinking;
+    this.tui.requestRender();
+  }
+
+  private toggleTools(): void {
+    const now = Date.now();
+    if (now - this.lastToggleTime < 350) return;
+    this.lastToggleTime = now;
+    this.showTools = !this.showTools;
+    this.tui.requestRender();
+  }
 
   constructor(
     private readonly tui: TUI,
@@ -238,8 +255,8 @@ export class TaskDockComponent implements Component, Focusable {
         return { handled: true, render: true };
       }
 
-      // Mouse Click
-      if (event.type === 'click' || (event.type === 'press' && event.button === 'left')) {
+      // Mouse Click (Only on 'click', not 'press', to prevent double-toggle auto-collapse)
+      if (event.type === 'click' && event.button === 'left') {
         const y = event.y;
         // Click Header: Back
         if (y === 0 && event.x <= 18) {
@@ -248,15 +265,13 @@ export class TaskDockComponent implements Component, Focusable {
           return { handled: true, render: true };
         }
         // Click Thought line: Toggle Thinking
-        if (this.thoughtLineY !== -1 && y === this.thoughtLineY) {
-          this.showThinking = !this.showThinking;
-          this.tui.requestRender();
+        if (this.thoughtLineY !== -1 && (y === this.thoughtLineY || y === this.thoughtLineY - 1)) {
+          this.toggleThinking();
           return { handled: true, render: true };
         }
         // Click Explored tools line: Toggle Tool calls
-        if (this.exploredLineY !== -1 && y === this.exploredLineY) {
-          this.showTools = !this.showTools;
-          this.tui.requestRender();
+        if (this.exploredLineY !== -1 && (y === this.exploredLineY || y === this.exploredLineY - 1)) {
+          this.toggleTools();
           return { handled: true, render: true };
         }
       }
@@ -296,13 +311,11 @@ export class TaskDockComponent implements Component, Focusable {
               return;
             }
             if (this.thoughtLineY !== -1 && (y === this.thoughtLineY || y === this.thoughtLineY - 1)) {
-              this.showThinking = !this.showThinking;
-              this.tui.requestRender();
+              this.toggleThinking();
               return;
             }
             if (this.exploredLineY !== -1 && (y === this.exploredLineY || y === this.exploredLineY - 1)) {
-              this.showTools = !this.showTools;
-              this.tui.requestRender();
+              this.toggleTools();
               return;
             }
           }
@@ -393,15 +406,13 @@ export class TaskDockComponent implements Component, Focusable {
 
       // 't' -> Toggle Thinking block
       if (data === 't' || data === 'T') {
-        this.showThinking = !this.showThinking;
-        this.tui.requestRender();
+        this.toggleThinking();
         return;
       }
 
       // 'e' or 'o' -> Toggle Explored Tools block
       if (data === 'e' || data === 'E' || data === 'o' || data === 'O') {
-        this.showTools = !this.showTools;
-        this.tui.requestRender();
+        this.toggleTools();
         return;
       }
 

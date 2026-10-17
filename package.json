@@ -1,6 +1,6 @@
 {
   "name": "pi-background-tasks-subagents",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Unified background shell tasks, autonomous in-memory subagents, and OpenCode-style directional TUI dock for Pi",
   "author": "tungbach12",
   "license": "MIT",
