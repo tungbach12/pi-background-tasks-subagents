@@ -3,9 +3,36 @@
 > **Zero-Bloat Background Tasks & Autonomous Subagents for [Pi](https://github.com/earendil-works/pi)**  
 > *Sleek OpenCode-style TUI dock · 100% in-memory child sessions · Zero disk clutter · Ultra lightweight (~20 KB)*
 
-[![npm version](https://img.shields.io/npm/v/pi-background-tasks-subagents.svg)](https://www.npmjs.com/package/pi-background-tasks-subagents)
-[![license](https://img.shields.io/npm/l/pi-background-tasks-subagents.svg)](https://github.com/tungbach12/pi-background-tasks-subagents/blob/main/LICENSE)
-[![package size](https://img.shields.io/badge/size-~20KB-success.svg)](https://www.npmjs.com/package/pi-background-tasks-subagents)
+[![npm version](https://img.shields.io/npm/v/pi-background-tasks-subagents.svg?color=cb3837)](https://www.npmjs.com/package/pi-background-tasks-subagents)
+[![license](https://img.shields.io/npm/l/pi-background-tasks-subagents.svg?color=22c55e)](https://github.com/tungbach12/pi-background-tasks-subagents/blob/main/LICENSE)
+[![package size](https://img.shields.io/badge/package%20size-~20KB-blue.svg)](https://www.npmjs.com/package/pi-background-tasks-subagents)
+[![pi catalog](https://img.shields.io/badge/pi.dev-catalog%20live-blueviolet.svg)](https://pi.dev/packages/pi-background-tasks-subagents)
+
+---
+
+## 🖥️ OpenCode Fullscreen Transcript View
+
+Press **`Shift+Down`** anywhere to open the Dock, then press **`Enter`** on any task to inspect its full transcript:
+
+```text
+  ← Back (esc/←)   Deep multi-repo architecture analysis                     Running
+
+  │ You are a subagent spawned by another session.
+  │ Conduct a comprehensive, multi-step investigation of the workspace...
+  │ Please perform the following:
+  │ 1. Thoroughness level: very thorough.
+  │ 2. Read and analyze:
+  │    - SmartDroneInspection-docs/project-reference/business-flows.md
+
+  + Thought · 270ms                                         [click or press 't']
+
+  → Explored: 4 reads, 4 searches                           [click or press 'e']
+
+  Synthesis Findings:
+    The backend is structured as Spring Modulith with Java 21...
+
+  back esc/←  scroll wheel/↑/↓  thinking t/click  tools e/click  interrupt ctrl+d
+```
 
 ---
 
@@ -34,7 +61,10 @@ Many modern AI agent harnesses (such as OMP / `oh-my-opencode`) have become mass
 ## ✨ Features
 
 - **Sleek OpenCode TUI Dock**: Solid opaque dark slate background (`#141416`) hiding chat history behind it, peach cursor (`#feb478`), and tabs (`Subagents` / `Shell`).
-- **Fullscreen Transcript View**: Press `Enter` on any subagent or process to inspect its prompt (with purple bar `│`), reasoning thought time (`+ Thought · 270ms`), categorized summary (`→ Explored: X reads, Y searches`), tool call history, and findings.
+- **Interactive Fullscreen Mode**: 
+  - **Live Streaming**: Real-time timer and tool execution counters update smoothly as the subagent runs.
+  - **Click-to-Expand Accordions**: Click `+ Thought` (or press **`t`**) and `→ Explored` (or press **`e`**) to toggle thought details and tool history without glitches.
+  - **Smooth Mouse Wheel Scrolling**: Scroll the viewport directly with your mouse wheel or keyboard.
 - **Zero Disk Footprint**: In-memory execution leaves 0 orphan session files or cache junk on disk. When a subagent finishes, its memory is freed immediately.
 - **Conflict-Free Shortcut**: Press `Shift+Down` (`Shift+↓`) anywhere in the terminal to toggle the dock without interfering with prompt cursor movement, chat history, or slash (`/`) autocomplete menus.
 - **Asynchronous & Synchronous Execution**:
@@ -49,7 +79,7 @@ Many modern AI agent harnesses (such as OMP / `oh-my-opencode`) have become mass
 - Press **`Shift+Down`** (`Shift+↓`) anywhere in the terminal.
 - Or type `/tasks`.
 
-### Inside the Dock
+### Inside the Dock List View
 - **`↓` / `j`**: Move selection down.
 - **`↑` / `k`**: Move selection up.
 - **`↑` at row 0 (top of list)**: Exits the dock back to the main chat!
@@ -59,11 +89,14 @@ Many modern AI agent harnesses (such as OMP / `oh-my-opencode`) have become mass
 - **`ctrl+a`**: Toggles visibility of inactive/completed tasks.
 - **`Esc` / `q`**: Closes the dock.
 
-### Inside Fullscreen View
-- **`↑` / `↓` / `PageUp` / `PageDown`**: Scrolls transcript or log output.
+### Inside Fullscreen Transcript View
+- **Mouse Wheel / `↑` / `↓` / `PageUp` / `PageDown`**: Scrolls transcript or log output.
+- **Click `+ Thought` / Press `t`**: Expands or collapses reasoning thoughts.
+- **Click `→ Explored` / Press `e`**: Expands or collapses tool history.
+- **Click `← Back` / Press `Esc` / `←`**: Returns to the dock list view.
 - **`c`**: Copies task result or log file path.
 - **`ctrl+d`**: Interrupts running subagent or process.
-- **`Esc` / `←`**: Returns to the dock list view.
+- **`q`**: Exits dock back to main terminal.
 
 ---
 
