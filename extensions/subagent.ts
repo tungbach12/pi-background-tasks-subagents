@@ -191,6 +191,10 @@ Guidelines:
           const actionText = `${event.toolName}(${preview})`;
 
           history.push({ tool: event.toolName, args: event.args, time: Date.now() });
+          task.history = [...history];
+          task.liveAction = actionText;
+          task.toolCallCount = toolCallCount;
+
           events.onUpdate(id, {
             toolCallCount,
             liveAction: actionText,

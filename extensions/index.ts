@@ -197,16 +197,27 @@ export default function orchestratorExtension(pi: ExtensionAPI): void {
         currentCtx = ctx;
         dock.setContext(ctx);
 
+        let currentTask: OrchestratorTask | undefined;
+
         const { text, task } = await subagentRunner.execute(
           ctx,
           params,
           signal,
           (progressMsg) => {
-            onUpdate?.({ content: [{ type: 'text', text: progressMsg }] });
+            onUpdate?.({
+              content: [{ type: 'text', text: progressMsg }],
+              details: { task: currentTask, role: params.role ?? 'explore' },
+            });
           },
           {
-            onRegister: (t, abort) => dock.register(t, abort),
-            onUpdate: (id, u) => dock.update(id, u),
+            onRegister: (t, abort) => {
+              currentTask = t;
+              dock.register(t, abort);
+            },
+            onUpdate: (id, u) => {
+              if (currentTask) Object.assign(currentTask, u);
+              dock.update(id, u);
+            },
             onFinish: (t) => {
               dock.update(t.id, { status: t.status, endTime: t.endTime, resultText: t.resultText });
               if (t.background) {
@@ -235,31 +246,74 @@ export default function orchestratorExtension(pi: ExtensionAPI): void {
         };
       },
       renderCall(args, theme) {
-        const title = theme.fg('toolTitle', theme.bold('subagent '));
-        const roleBadge = theme.fg('dim', `[${args.role ?? 'explore'}] `);
-        const desc = theme.fg('muted', args.description || args.prompt.slice(0, 50));
-        return new Text(`${title}${roleBadge}${desc}`, 0, 0);
+        const THOUGHT_YELLOW = '\x1b[38;2;234;179;8m';
+        const EXPLORED_GRAY = '\x1b[38;2;160;160;170m';
+        const RESET = '\x1b[0m';
+
+        const desc = args.description ? ` · ${args.description}` : '';
+        const thoughtLine = `${THOUGHT_YELLOW}● Thought · running...${RESET}`;
+        const actionLine = `${EXPLORED_GRAY}→ Starting subagent [${args.role ?? 'explore'}]${desc}${RESET}`;
+
+        return new Text(`${thoughtLine}\n\n${actionLine}`, 0, 0);
       },
-      renderResult(result, { expanded }, theme) {
-        const task = result.details.task;
-        const dur = task.endTime && task.startTime ? `${Math.round((task.endTime - task.startTime) / 1000)}s` : '';
-        const badge = task.error
-          ? theme.fg('error', `✗ subagent [${result.details.role}]`)
-          : task.status === 'cancelled'
-            ? theme.fg('warning', `⊘ subagent [${result.details.role}]`)
-            : theme.fg('success', `✓ subagent [${result.details.role}]`);
+      renderResult(result, options, theme) {
+        const { expanded, isPartial } = (options ?? {}) as { expanded?: boolean; isPartial?: boolean };
+        const task = (result.details as any)?.task as OrchestratorTask | undefined;
 
-        const desc = theme.fg('accent', task.name);
-        const meta = theme.fg('dim', `(${task.toolCallCount} tools · ${dur})`);
-        let text = `${badge} ${desc} ${meta}`;
+        const THOUGHT_YELLOW = '\x1b[38;2;234;179;8m';
+        const EXPLORED_GRAY = '\x1b[38;2;160;160;170m';
+        const PURPLE_BAR = '\x1b[38;2;168;85;247m│\x1b[0m ';
+        const DIM_GRAY = '\x1b[38;2;120;120;130m';
+        const RESET = '\x1b[0m';
 
-        if (expanded) {
+        const durationMs = task
+          ? (task.endTime ? task.endTime - task.startTime : Date.now() - task.startTime)
+          : 0;
+        const thoughtMs = task?.thoughtDurationMs ?? durationMs;
+        const durStr = thoughtMs < 1000 ? `${thoughtMs}ms` : `${(thoughtMs / 1000).toFixed(1)}s`;
+
+        const thoughtSymbol = isPartial ? '●' : (expanded ? '-' : '+');
+        const thoughtLine = `${THOUGHT_YELLOW}${thoughtSymbol} Thought · ${durStr}${RESET}`;
+
+        let actionLine = '';
+        if (isPartial) {
+          if (task?.liveAction) {
+            actionLine = `${EXPLORED_GRAY}→ Exploring: ${task.readsCount} reads, ${task.searchesCount} searches (${task.liveAction})${RESET}`;
+          } else {
+            actionLine = `${EXPLORED_GRAY}→ Exploring...${RESET}`;
+          }
+        } else {
+          const summary = task?.summaryActionText ?? `→ Explored: ${task?.readsCount ?? 0} reads, ${task?.searchesCount ?? 0} searches`;
+          actionLine = `${EXPLORED_GRAY}${summary}${RESET}`;
+        }
+
+        let contentText = `${thoughtLine}\n\n${actionLine}`;
+
+        if (expanded && task) {
+          contentText += '\n';
+
+          const promptLines = (task.commandOrPrompt || '').split('\n').slice(0, 8);
+          for (const pl of promptLines) {
+            contentText += `\n  ${PURPLE_BAR}${theme.fg('muted', pl)}`;
+          }
+
+          if (task.history && task.history.length > 0) {
+            contentText += `\n\n  ${theme.bold('Tool History:')}`;
+            task.history.forEach((h, idx) => {
+              const argPreview = h.args && typeof h.args === 'object' ? JSON.stringify(h.args).slice(0, 60) : '';
+              contentText += `\n    ${DIM_GRAY}${idx + 1}. ${h.tool}(${argPreview})${RESET}`;
+            });
+          }
+
           const output = result.content
             .map((c) => (c.type === 'text' ? c.text : ''))
             .join('\n');
-          text += `\n${theme.fg('toolOutput', output.slice(0, 1500))}`;
+          if (output) {
+            contentText += `\n\n  ${theme.bold('Findings:')}\n${theme.fg('toolOutput', output.slice(0, 3000))}`;
+          }
         }
-        return new Text(text, 0, 0);
+
+        return new Text(contentText, 0, 0);
       },
     },
   );
