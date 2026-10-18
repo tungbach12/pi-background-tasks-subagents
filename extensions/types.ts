@@ -96,7 +96,7 @@ export const SubagentParams = Type.Object({
   maxSteps: Type.Optional(
     Type.Number({
       description:
-        'Maximum tool calls allowed before concluding exploration (default: 25 for deep exploration). Set higher (e.g. 35-40) for exhaustive multi-repo research.',
+        'Maximum tool calls before forcing text-only response (default: Infinity / unlimited, matching OpenCode). Set only if you wish to enforce a cost/step ceiling.',
     }),
   ),
 });

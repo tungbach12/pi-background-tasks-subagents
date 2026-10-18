@@ -208,11 +208,11 @@ Guidelines:
 
           onProgress?.(`[subagent:${role}] Running ${actionText}...`);
 
-          // OpenCode-style exploration budget (default: 25 steps for deep exploration, configurable via maxSteps)
-          const maxSteps = Math.max(5, params.maxSteps ?? 25);
-          if (toolCallCount === maxSteps) {
+          // OpenCode reference: defaults to Infinity (unlimited autonomous exploration until model chooses to stop)
+          const maxSteps = params.maxSteps !== undefined && params.maxSteps > 0 ? params.maxSteps : Infinity;
+          if (toolCallCount >= maxSteps) {
             void session?.steer(
-              `You have reached the tool execution budget (${maxSteps} calls). Please conclude your exploration and synthesize your findings into the final report now.`,
+              'CRITICAL - MAXIMUM STEPS REACHED\nThe maximum number of steps allowed for this task has been reached. Tools are disabled. Respond with text only summarizing your findings.',
             );
           }
         }
